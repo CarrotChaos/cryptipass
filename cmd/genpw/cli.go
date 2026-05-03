@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"sort"
 
 	"github.com/francescoalemanno/cryptipass/v3"
 )
@@ -51,13 +52,27 @@ func main() {
 	fmt.Fprintln(w, "Passphrase\tLog10(Guesses)\tLog2Entropy\t  Strength")
 	fmt.Fprintln(w, " \t \t \t ")
 	N := *passwords
+	var results []Passphrase
+
+	// Generate and store
 	for N > 0 {
 		F, H := g.GenFromPattern(pattern)
+		results = append(results, Passphrase{F: F, H: H})
 		N--
-		log10guess := (H - 1) / math.Log2(10)
+	}
+
+	// Sort by entropy (strongest last)
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].H < results[j].H
+	})
+
+	// Print AFTER sorting
+	for _, r := range results {
+		log10guess := (r.H - 1) / math.Log2(10)
 		meterbar := int(min(log10guess/2+0.5, 12))
 		meter := "[" + strings.Repeat("=", meterbar) + strings.Repeat(".", 12-meterbar) + "]"
-		fmt.Fprintf(w, "%v\t   %.2f\t   %.2f\t%v\n", F, log10guess, H, meter)
+
+		fmt.Fprintf(w, "%v\t   %.2f\t   %.2f\t%v\n", r.F, log10guess, r.H, meter)
 	}
 	w.Flush()
 
